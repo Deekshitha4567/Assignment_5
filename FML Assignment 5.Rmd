@@ -1,0 +1,690 @@
+---
+title: "FML"
+author: "Deekshitha"
+date: "2024-04-07"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+```{r}
+cereal_1 <- read.csv("C:/Users/deeks/Downloads/Cereals.csv")
+```
+
+```{r}
+head(cereal_1)
+```
+
+```{r}
+str(cereal_1) 
+```
+
+```{r}
+summary(cereal_1)
+```
+
+# Process the data
+
+```{r}
+scaled_crl <- cereal_1 
+scaled_crl[ , c(4:16)] <- scale(cereal_1[ , c(4:16)]) 
+pre_processed_cereal <- na.omit(scaled_crl) 
+head(pre_processed_cereal)
+```
+
+#  Following the preprocessing and scaling of the data, the final number of observations increased from 77 to 74. Therefore, the number of records with a "NA" value was limited to 3.
+
+# Task 1
+
+```{r}
+library(cluster)
+```
+
+```{r}
+crel_d_ecl <- dist(pre_processed_cereal[ , c(4:16)], method = "euclidean") 
+single_clust <- agnes(crel_d_ecl, method = "single") 
+plot(single_clust,  main = "Customer Cereal Ratings - AGNES - Single Linkage Method", xlab = "Cereal",      ylab = "Height",      cex.axis = 1,      cex = 0.56,      hang = -1) 
+```
+
+```{r}
+complete_clust <- agnes(crel_d_ecl, method = "complete") 
+plot(complete_clust,  
+     main = "Customer Cereal Ratings - AGNES - Complete Linkage Method",      xlab = "Cereal",      ylab = "Height",      cex.axis = 1,      cex = 0.56,      hang = -1)
+```
+
+```{r}
+average_clust <- agnes(crel_d_ecl, method = "average") 
+plot(average_clust,  
+     main = "Customer Cereal Ratings - AGNES - Average Linkage Method",      xlab = "Cereal",      ylab = "Height",      cex.axis = 1,      cex = 0.56,      hang = -1) 
+```
+
+```{r}
+ward_clust <- agnes(crel_d_ecl, method = "ward") 
+# Plot the results of the different methods 
+plot(ward_clust,  
+     main = "Customer Cereal Ratings - AGNES - Ward Linkage Method",      xlab = "Cereal",      ylab = "Height",      cex.axis = 1,      cex = 0.56,      hang = -1) 
+```
+
+#  The optimal clustering strategy shall be determined by the aggregation coefficient obtained from each method. The value approaching 1.0 indicates a closer clustering structure. Therefore, a choice will be made as to how to achieve a result that is as close as possible to 1.0. The Ward Method: 0.90; Average Linkage: 0.78; Complete Linkage: 0.84; Single Linkage: 0.61. Therefore, the Ward approach will be selected as an optimum clustering model in this particular case.
+
+# Task 2
+
+```{r}
+library(factoextra)
+fviz_nbclust(pre_processed_cereal[ , c(4:16)], hcut, method = "wss", k.max = 
+26) + 
+  labs(title = "Optimal Number of Clusters - Elbow Method") +   geom_vline(xintercept = 12, linetype = 2) 
+```
+
+```{r}
+# Determine the optimal number of clusters for the dataset via the silhouette method 
+fviz_nbclust(pre_processed_cereal[ , c(4:16)],                                 hcut,  
+                               method = "silhouette",  
+                               k.max = 26) + 
+  labs(title = "Optimal Number of Clusters - Silhouette Method") 
+```
+
+# According to the agreement between the elbow technique and the silhouette approach, this scenario would have 12 clusters. A summary of the 12 hierarchical tree clusters is given here.
+
+```{r}
+plot(ward_clust,  
+     main = "AGNES - Ward Linkage Method - 12 Clusters Outlined",      xlab = "Cereal",      ylab = "Height",      cex.axis = 1,      cex = 0.56,      hang = -1) 
+```
+
+
+# Task 3 
+
+```{r}
+# For analysis, divide the tree into 12 clusters. 
+clst_ward_12 <- cutree(ward_clust, k = 12)
+
+# Add the assigned cluster to the preprocessed data set 
+pre_processed_1_cerl <- cbind(cluster = clst_ward_12, 
+pre_processed_cereal)
+```
+
+#  Partition Data: The data set will be divided into two halves in order to test the stability of the clusters. Once 70% has been used for the purpose of drawing up cluster allocations again, another 30% will be allocated according to their nearest centroid.
+
+```{r}
+library(caret)
+```
+
+
+```{r}
+set.seed(708) 
+Indx_crel <- createDataPartition(pre_processed_cereal$protein, p=0.3, list = F) 
+preprocessed_crel_partion_B <- pre_processed_cereal[Indx_crel, ]
+preprocessed_crel_partion_A <- pre_processed_cereal[-Indx_crel, ]  
+```
+
+#  In order to assess the stability of the clusters, the K value (12) and the ward clustering method shall be used for the duration of this task. Clusters 1 through 12 are then assigned to the closest points in partition B.
+
+```{r}
+crel_ecl_A <- dist(preprocessed_crel_partion_A[ , c(4:16)], method = "euclidean") 
+Clst_ward_A <- agnes(crel_ecl_A, method = "ward") 
+plot(Clst_ward_A,  
+     main = "Customer Cereal Ratings - Ward Linkage Method - Partition A",      xlab = "Cereal",      ylab = "Height", 
+cex.axis = 1,      cex = 0.56,      hang = -1) 
+```
+
+```{r}
+clst_ward_12_A <- cutree(Clst_ward_A, k = 12)
+pre_processed_cereal_A <- cbind(cluster = clst_ward_12_A, 
+preprocessed_crel_partion_A) 
+```
+
+```{r}
+ctroids_A_ward <- aggregate(pre_processed_cereal_A[ , 5:17], 
+list(pre_processed_cereal_A$cluster), mean) 
+ctroids_A_ward <- data.frame(Cluster = ctroids_A_ward[ , 1], Centroid = 
+rowMeans(ctroids_A_ward[ , -c(1:4)])) 
+ctroids_A_ward <- ctroids_A_ward$Centroid 
+```
+
+```{r}
+preprocessed_crel_partion_B_centers <- data.frame(preprocessed_crel_partion_B[, 1:3],
+Center = rowMeans(preprocessed_crel_partion_B[ , 4:16])) 
+```
+
+```{r}
+B_to_A_centers <- dist(ctroids_A_ward, preprocessed_crel_partion_B_centers$Center, 
+method = "euclidean")
+```
+
+```{r}
+pre_processed_cereal_B <- cbind(cluster = 
+c(4,8,7,3,5,6,7,11,11,10,8,5,10,1,10,1,4,12,12,7,7,1,4,9),
+preprocessed_crel_partion_B) 
+```
+
+```{r}
+pre_processed_cereal_2 <- rbind(pre_processed_cereal_A, pre_processed_cereal_B)
+pre_processed_1_cerl <- 
+pre_processed_1_cerl[order(pre_processed_1_cerl$name), ] 
+pre_processed_cereal_2 <-
+pre_processed_cereal_2[order(pre_processed_cereal_2$name), ]	 
+```
+
+```{r}
+sum(pre_processed_1_cerl$cluster == pre_processed_cereal_2$cluster) 
+```
+
+```{r}
+ggplot(data = pre_processed_1_cerl, aes(pre_processed_1_cerl$cluster)) +  
+geom_bar(fill = "red") + 
+labs(title="Count of Cluster Assignments - All Original Data") +   labs(x="Cluster 
+Assignment", y="Count") +   guides(fill=FALSE) + 
+scale_x_continuous(breaks=c(1:12)) +   scale_y_continuous(breaks=c(5,10,15,20), 
+limits = c(0,25)) 
+```
+
+```{r}
+ggplot(data = pre_processed_cereal_2, aes(pre_processed_cereal_2$cluster)) +  
+geom_bar(fill = "red") + 
+labs(title="Count of Cluster Assignments - Partitioned Data") +   labs(x="Cluster 
+Assignment", y="Count") +   guides(fill=FALSE) + 
+scale_x_continuous(breaks=c(1:12)) + 
+scale_y_continuous(breaks=c(5,10,15,20), limits = c(0,25)) 
+```
+# Assignment Task 4:
+
+#“The elementary public schools would like to choose a set of cereals to include in their daily cafeterias. Every day a different cereal is offered, but all cereals should support a healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.” Should the data be normalized? If not, how should they be used in the cluster analysis?” 
+
+Normalizing the data would not be suitable in this situation. It wouldn't be acceptable because the nutritional information for cereal is scaled and normalized based on the sample of cereal that is being studied. As a result, the collected data set might only contain cereals with extremely high sugar content and extremely low levels of iron, fiber, and other nutrients. It is hard to say how much nutrients the cereal will supply a child once it has been scaled or standardized throughout the sample set. Uninformed viewers would believe that a cereal with an iron score of 0.999 indicates it contains nearly all the iron a child needs for nutrition; nevertheless, it might just be the best of the worst in the sample set, with essentially little nutritional value. 
+
+Therefore, converting the data into a ratio to a child's daily recommended intake of calories, fiber, carbs, etc. would be a more acceptable way to preprocess the data. As a result, analysts would be able to analyze the clusters with greater knowledge and be prevented from letting a few major variables interfere with the distance computations. An analyst examining the clusters could look at the cluster average to find out how much of XX cereal a student should eat each day. This would enable the employees to choose the "healthy" cereal clusters with knowledge. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
